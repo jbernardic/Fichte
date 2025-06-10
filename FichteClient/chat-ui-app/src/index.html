@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat UI Application</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <div class="main-wrapper">
+        <!-- Contacts Sidebar -->
+        <div class="contacts-sidebar" id="contacts-sidebar">
+            <div class="contacts-header">
+                <h2>Contacts</h2>
+                <button id="add-contact-btn" title="Add Contact">+</button>
+            </div>
+            <form id="add-contact-form" style="display:none; padding: 0.5rem;">
+                <input type="text" id="new-contact-name" placeholder="Contact name..." required>
+                <button type="submit">Add</button>
+            </form>
+            <ul class="contacts-list" id="contacts-list">
+                <!-- Contacts will be dynamically added here -->
+            </ul>
+        </div>
+        <!-- Chat Area -->
+        <div class="chat-container">
+            <div class="chat-header">
+                <h1 id="chat-title">Chat Application</h1>
+            </div>
+            <div class="chat-messages" id="chat-messages">
+                <!-- Messages will be dynamically added here -->
+            </div>
+            <div class="chat-input">
+                <input type="text" id="message-input" placeholder="Type a message...">
+                <button id="send-button">Send</button>
+            </div>
+        </div>
+    </div>
+    <script src="scripts/app.js"></script>
+</body>
+</html>
