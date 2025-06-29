@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Fichte.Models;
+using Fichte.Dtos;
 using BCrypt.Net;
 using System.Linq;
 
@@ -7,23 +8,10 @@ namespace Fichte.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class RegisterController : ControllerBase
+    public class RegisterController(IConfiguration configuration, DatabaseContext context) : BaseController(configuration, context)
     {
-        private readonly DatabaseContext _context;
-
-        public RegisterController(DatabaseContext context)
-        {
-            _context = context;
-        }
-
-        public class RegisterRequest
-        {
-            public string Username { get; set; } = string.Empty;
-            public string Password { get; set; } = string.Empty;
-        }
-
         [HttpPost]
-        public IActionResult Register([FromBody] RegisterRequest request)
+        public IActionResult Register([FromBody] RegisterDto request)
         {
             if (_context.Users.Any(u => u.Username == request.Username))
             {
