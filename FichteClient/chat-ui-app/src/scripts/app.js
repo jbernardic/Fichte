@@ -480,14 +480,6 @@ class FichteClient {
                 method: 'POST',
                 body: JSON.stringify({ groupId: this.currentChat.group.id })
             });
-            
-            if (response && response.ok) {
-                this.hideModal('group-members-modal');
-                this.currentChat = null;
-                this.chatTitle.textContent = 'Select a conversation';
-                this.chatMessages.innerHTML = '<div class="welcome-message"><h2>Welcome to Fichte Chat!</h2><p>Select a contact or group to start messaging</p></div>';
-                await this.loadGroups();
-            }
         }
     }
     
