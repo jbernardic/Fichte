@@ -14,6 +14,5 @@ namespace Fichte.Dtos
         [Range(2, 50, ErrorMessage = "Max members must be between 2 and 50.")]
         public int MaxMembers { get; set; } = 50;
         
-        public bool IsPrivate { get; set; } = false;
     }
 }

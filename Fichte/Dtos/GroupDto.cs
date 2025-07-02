@@ -8,7 +8,7 @@ namespace Fichte.Dtos
         public DateTime CreatedAt { get; set; }
         public int CreatedByUserID { get; set; }
         public int MaxMembers { get; set; }
-        public bool IsPrivate { get; set; }
+        public string InviteCode { get; set; } = string.Empty;
         public int MemberCount { get; set; }
         public bool IsUserMember { get; set; }
         public bool IsUserAdmin { get; set; }

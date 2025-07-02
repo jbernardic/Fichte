@@ -21,7 +21,8 @@ namespace Fichte.Models
         
         public int MaxMembers { get; set; } = 50;
         
-        public bool IsPrivate { get; set; } = false;
+        [Required]
+        public required string InviteCode { get; set; }
         
         public virtual ICollection<GroupMember> Members { get; set; } = new List<GroupMember>();
         public virtual ICollection<Message> Messages { get; set; } = new List<Message>();

@@ -16,7 +16,13 @@ class FichteAPITester:
         self.jwt_token = None
         self.user_id = None
         self.group_id = None
+        self.group_invite_code = None
         self.session = requests.Session()
+        
+        # Second user for invite testing
+        self.user2_jwt_token = None
+        self.user2_id = None
+        self.user2_session = requests.Session()
         
     def generate_random_string(self, length=8):
         return ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
@@ -120,8 +126,7 @@ class FichteAPITester:
         data = {
             "Name": f"Test Group {self.generate_random_string()}",
             "Description": "A test group created by API tester",
-            "MaxMembers": 10,
-            "IsPrivate": False
+            "MaxMembers": 10
         }
         
         response = self.session.post(
@@ -136,7 +141,8 @@ class FichteAPITester:
             try:
                 group_data = response.json()
                 self.group_id = group_data.get('id')
-                print(f"PASS Group created successfully, ID: {self.group_id}")
+                self.group_invite_code = group_data.get('inviteCode')
+                print(f"PASS Group created successfully, ID: {self.group_id}, Invite Code: {self.group_invite_code}")
                 return True
             except:
                 pass
@@ -228,6 +234,141 @@ class FichteAPITester:
             print(f"FAIL Failed to logout user")
             return False
     
+    def test_register_second_user(self):
+        """Test registration of second user for invite testing"""
+        username = f"testuser2_{self.generate_random_string()}"
+        password = "testpass123"
+        
+        data = {
+            "Username": username,
+            "Password": password
+        }
+        
+        response = self.user2_session.post(
+            f"{self.base_url}/api/Auth/Register",
+            json=data,
+            headers={"Content-Type": "application/json"}
+        )
+        
+        self.print_response(response, "Second User Registration")
+        
+        if response.status_code == 200:
+            self.username2 = username
+            self.password2 = password
+            print(f"PASS Second user registration successful: {username}")
+            return True
+        else:
+            print(f"FAIL Second user registration failed")
+            return False
+    
+    def test_login_second_user(self):
+        """Test login of second user"""
+        data = {
+            "Username": self.username2,
+            "Password": self.password2
+        }
+        
+        response = self.user2_session.post(
+            f"{self.base_url}/api/Auth/Login",
+            json=data,
+            headers={"Content-Type": "application/json"}
+        )
+        
+        self.print_response(response, "Second User Login")
+        
+        if response.status_code == 200:
+            self.user2_jwt_token = response.text.strip('"')
+            self.user2_session.headers.update({"Authorization": f"Bearer {self.user2_jwt_token}"})
+            print(f"PASS Second user login successful, JWT token stored")
+            return True
+        else:
+            print(f"FAIL Second user login failed")
+            return False
+    
+    def test_get_second_user_info(self):
+        """Test getting second user info"""
+        response = self.user2_session.get(f"{self.base_url}/api/Users/me")
+        self.print_response(response, "Get Second User Info")
+        
+        if response.status_code == 200:
+            try:
+                user_data = response.json()
+                self.user2_id = user_data.get('id')
+                print(f"PASS Second user info retrieved, ID: {self.user2_id}")
+                return True
+            except:
+                pass
+        
+        print(f"FAIL Failed to get second user info")
+        return False
+    
+    def test_join_group_with_invite(self):
+        """Test second user joining group with invite code"""
+        if not self.group_invite_code:
+            print("FAIL No invite code available for joining group")
+            return False
+        
+        response = self.user2_session.post(
+            f"{self.base_url}/api/Group/JoinGroup?inviteCode={self.group_invite_code}",
+            headers={"Content-Type": "application/json"}
+        )
+        
+        self.print_response(response, f"Join Group with Invite Code: {self.group_invite_code}")
+        
+        if response.status_code == 200:
+            print(f"PASS Second user successfully joined group with invite code")
+            return True
+        else:
+            print(f"FAIL Second user failed to join group with invite code")
+            return False
+    
+    def test_second_user_get_groups(self):
+        """Test second user getting their groups (should include the joined group)"""
+        response = self.user2_session.get(f"{self.base_url}/api/Group/GetUserGroups")
+        self.print_response(response, "Second User Get Groups")
+        
+        if response.status_code == 200:
+            try:
+                groups = response.json()
+                joined_group = next((g for g in groups if g.get('id') == self.group_id), None)
+                if joined_group:
+                    print(f"PASS Second user successfully has joined group in their groups list")
+                    return True
+                else:
+                    print(f"FAIL Joined group not found in second user's groups list")
+                    return False
+            except:
+                pass
+        
+        print(f"FAIL Failed to get second user's groups")
+        return False
+    
+    def test_second_user_send_message_to_group(self):
+        """Test second user sending message to joined group"""
+        if not self.group_id:
+            print("FAIL No group ID available for sending message")
+            return False
+        
+        data = {
+            "Body": f"Hello from second user! Random: {self.generate_random_string()}",
+            "GroupID": self.group_id
+        }
+        
+        response = self.user2_session.post(
+            f"{self.base_url}/api/Messages/SendMessage",
+            json=data,
+            headers={"Content-Type": "application/json"}
+        )
+        
+        self.print_response(response, "Second User Send Message to Group")
+        
+        if response.status_code == 200:
+            print(f"PASS Second user successfully sent message to joined group")
+            return True
+        else:
+            print(f"FAIL Second user failed to send message to group")
+            return False
+    
     def run_all_tests(self):
         """Run all API tests in sequence"""
         print("Starting Fichte API Tests")
@@ -243,6 +384,12 @@ class FichteAPITester:
             ("Send Message to Group", self.test_send_message_to_group),
             ("Get User Messages", self.test_get_user_messages),
             ("Search Messages", self.test_search_messages),
+            ("Register Second User", self.test_register_second_user),
+            ("Login Second User", self.test_login_second_user),
+            ("Get Second User Info", self.test_get_second_user_info),
+            ("Join Group with Invite", self.test_join_group_with_invite),
+            ("Second User Get Groups", self.test_second_user_get_groups),
+            ("Second User Send Message", self.test_second_user_send_message_to_group),
             ("Logout", self.test_logout)
         ]
         

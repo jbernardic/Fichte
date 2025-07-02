@@ -21,7 +21,7 @@ namespace Fichte.Controllers
                 Description = createGroup.Description,
                 CreatedByUserID = userId,
                 MaxMembers = createGroup.MaxMembers,
-                IsPrivate = createGroup.IsPrivate
+                InviteCode = Guid.NewGuid().ToString("N")[..8]
             };
 
             _context.Groups.Add(group);
@@ -45,7 +45,7 @@ namespace Fichte.Controllers
                 CreatedAt = group.CreatedAt,
                 CreatedByUserID = group.CreatedByUserID,
                 MaxMembers = group.MaxMembers,
-                IsPrivate = group.IsPrivate,
+                InviteCode = group.InviteCode,
                 MemberCount = 1,
                 IsUserMember = true,
                 IsUserAdmin = true
@@ -71,7 +71,7 @@ namespace Fichte.Controllers
                     CreatedAt = gm.Group.CreatedAt,
                     CreatedByUserID = gm.Group.CreatedByUserID,
                     MaxMembers = gm.Group.MaxMembers,
-                    IsPrivate = gm.Group.IsPrivate,
+                    InviteCode = gm.Group.InviteCode,
                     MemberCount = gm.Group.Members.Count,
                     IsUserMember = true,
                     IsUserAdmin = gm.IsAdmin
@@ -83,13 +83,13 @@ namespace Fichte.Controllers
 
         [Authorize(Roles = "User")]
         [HttpPost("[action]")]
-        public async Task<ActionResult> JoinGroup(int groupId)
+        public async Task<ActionResult> JoinGroup(string inviteCode)
         {
             var userId = GetUserId();
             
             var group = await _context.Groups
                 .Include(g => g.Members)
-                .FirstOrDefaultAsync(g => g.IDGroup == groupId);
+                .FirstOrDefaultAsync(g => g.InviteCode == inviteCode);
 
             if (group == null)
                 return NotFound("Group not found");
@@ -98,14 +98,14 @@ namespace Fichte.Controllers
                 return BadRequest("Group is full");
 
             var existingMembership = await _context.GroupMembers
-                .FirstOrDefaultAsync(gm => gm.GroupID == groupId && gm.UserID == userId);
+                .FirstOrDefaultAsync(gm => gm.GroupID == group.IDGroup && gm.UserID == userId);
 
             if (existingMembership != null)
                 return BadRequest("User is already a member of this group");
 
             var groupMember = new GroupMember
             {
-                GroupID = groupId,
+                GroupID = group.IDGroup,
                 UserID = userId,
                 IsAdmin = false
             };
