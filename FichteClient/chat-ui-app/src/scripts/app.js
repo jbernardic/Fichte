@@ -476,11 +476,22 @@ class FichteClient {
         if (!this.currentChat || this.currentChat.type !== 'group') return;
         
         if (confirm('Are you sure you want to leave this group?')) {
-            const response = await this.apiCall('/group/leavegroup', {
-                method: 'POST',
-                body: JSON.stringify({ groupId: this.currentChat.group.id })
+            const response = await this.apiCall(`/group/leavegroup?groupId=${this.currentChat.group.id}`, {
+                method: 'POST'
             });
+
+            if (response && response.ok) {
+                this.hideModal('group-members-modal');
+                this.resetChat();
+                await this.loadGroups();
+            }
         }
+    }
+
+    resetChat(){
+        this.currentChat = null;
+        this.chatTitle.textContent = 'Select a conversation';
+        this.chatMessages.innerHTML = '<div class="welcome-message"><h2>Welcome to Fichte Chat!</h2><p>Select a contact or group to start messaging</p></div>';
     }
     
     closeSearch() {
