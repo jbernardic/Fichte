@@ -479,7 +479,7 @@ class FichteClient {
             const response = await this.apiCall(`/group/leavegroup?groupId=${this.currentChat.group.id}`, {
                 method: 'POST'
             });
-            
+
             if (response && response.ok) {
                 this.hideModal('group-members-modal');
                 this.resetChat();
