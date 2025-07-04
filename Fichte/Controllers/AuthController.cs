@@ -14,50 +14,39 @@ namespace Fichte.Controllers
         [HttpPost("[action]")]
         public async Task<ActionResult> Register(RegisterDto register)
         {
-            if (string.IsNullOrWhiteSpace(register.Username) || string.IsNullOrWhiteSpace(register.Password))
-                return BadRequest("Username and password are required");
 
             if (await _context.Users.AnyAsync(x => x.Username.Equals(register.Username)))
                 return BadRequest($"Username {register.Username} already exists");
 
-            var user = new User
-            {
-                Username = register.Username,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(register.Password)
-            };
-
-            _context.Add(user);
-            await _context.SaveChangesAsync();
-            return Ok();
-        }
-
-        [HttpPost("[action]")]
-        public async Task<ActionResult> RegisterWithEmail(RegisterDto register, string email)
-        {
-            if (string.IsNullOrWhiteSpace(register.Username) || string.IsNullOrWhiteSpace(register.Password) || string.IsNullOrWhiteSpace(email))
-                return BadRequest("Username, password, and email are required");
-
-            if (await _context.Users.AnyAsync(x => x.Username.Equals(register.Username)))
-                return BadRequest($"Username {register.Username} already exists");
-
-            if (await _context.Users.AnyAsync(x => x.Email != null && x.Email.Equals(email)))
-                return BadRequest($"Email {email} already exists");
+            if (!string.IsNullOrEmpty(register.Email) && await _context.Users.AnyAsync(x => x.Email != null && x.Email.Equals(register.Email)))
+                return BadRequest($"Email {register.Email} already exists");
 
             var user = new User
             {
                 Username = register.Username,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(register.Password),
-                Email = email,
+                Email = register.Email,
                 IsEmailVerified = false
             };
 
+            if (!string.IsNullOrEmpty(register.Email))
+            {
+                var verificationToken = Guid.NewGuid().ToString();
+                user.EmailVerificationToken = verificationToken;
+                user.EmailVerificationTokenExpiry = DateTime.UtcNow.AddHours(24);
+            }
+
             _context.Add(user);
             await _context.SaveChangesAsync();
-            
-            // TODO: Send verification email
-            
+
+            if (!string.IsNullOrEmpty(register.Email))
+            {
+                SmtpProvider.SendVerificationEmail(_configuration, register.Email, register.Username, user.EmailVerificationToken!);
+            }
+
             return Ok();
         }
+
 
         [HttpPost("[action]")]
         public async Task<ActionResult> Login(LoginDto login)
@@ -81,82 +70,58 @@ namespace Fichte.Controllers
             return BadRequest("Incorrect username or password");
         }
 
-        [HttpPost("[action]")]
-        public ActionResult LoginWithOAuth(OAuthLoginDto oauthLogin)
+        [HttpGet("[action]")]
+        public async Task<ActionResult> VerifyEmail(string token)
         {
+            if (string.IsNullOrEmpty(token))
+                return BadRequest("Invalid verification token");
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.EmailVerificationToken == token);
+            if (user == null)
+                return BadRequest("Invalid verification token");
+
+            if (user.EmailVerificationTokenExpiry < DateTime.UtcNow)
+                return BadRequest("Verification token has expired");
+
+            user.IsEmailVerified = true;
+            user.EmailVerificationToken = null;
+            user.EmailVerificationTokenExpiry = null;
+            await _context.SaveChangesAsync();
+
+            return Ok("Email verified successfully");
+        }
+
+        [HttpPost("[action]")]
+        public async Task<ActionResult> ResendVerification()
+        {
+            int userId;
             try
             {
-                // TODO: Implement actual OAuth verification with provider APIs
-                // string? externalUserId = null;
-                // string? email = null;
-                // string? username = null;
-
-                if (oauthLogin.Provider.ToLower() == "google")
-                {
-                    return BadRequest("Google OAuth not fully implemented yet");
-                }
-                else if (oauthLogin.Provider.ToLower() == "github")
-                {
-                    return BadRequest("GitHub OAuth not fully implemented yet");
-                }
-                else
-                {
-                    return BadRequest("Unsupported OAuth provider");
-                }
-
-                /* TODO: This code will be reached when OAuth is fully implemented
-                // Find or create user
-                User? user = null;
-                if (oauthLogin.Provider.ToLower() == "google")
-                {
-                    user = await _context.Users.FirstOrDefaultAsync(u => u.GoogleId == externalUserId);
-                }
-                else if (oauthLogin.Provider.ToLower() == "github")
-                {
-                    user = await _context.Users.FirstOrDefaultAsync(u => u.GitHubId == externalUserId);
-                }
-
-                if (user == null && !string.IsNullOrEmpty(email))
-                {
-                    user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
-                    if (user != null)
-                    {
-                        // Link OAuth account to existing user
-                        if (oauthLogin.Provider.ToLower() == "google")
-                            user.GoogleId = externalUserId;
-                        else if (oauthLogin.Provider.ToLower() == "github")
-                            user.GitHubId = externalUserId;
-                    }
-                }
-
-                if (user == null)
-                {
-                    // Create new user
-                    user = new User
-                    {
-                        Username = username ?? $"user_{Guid.NewGuid().ToString()[..8]}",
-                        Email = email,
-                        IsEmailVerified = true, // OAuth providers verify emails
-                        GoogleId = oauthLogin.Provider.ToLower() == "google" ? externalUserId : null,
-                        GitHubId = oauthLogin.Provider.ToLower() == "github" ? externalUserId : null
-                    };
-
-                    _context.Users.Add(user);
-                }
-
-                user.IsOnline = true;
-                user.LastSeen = DateTime.UtcNow;
-                await _context.SaveChangesAsync();
-
-                var jwt = JwtTokenProvider.CreateToken(_configuration["JWT:SecureKey"]!, 60*30,
-                    user.IDUser.ToString(), "User");
-                return Ok(jwt);
-                */
+                userId = GetUserId();
             }
-            catch (Exception ex)
+            catch
             {
-                return BadRequest($"OAuth login failed: {ex.Message}");
+                return Unauthorized();
             }
+
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null)
+                return NotFound("User not found");
+
+            if (user.IsEmailVerified)
+                return BadRequest("Email is already verified");
+
+            if (string.IsNullOrEmpty(user.Email))
+                return BadRequest("No email address associated with this account");
+
+            var verificationToken = Guid.NewGuid().ToString();
+            user.EmailVerificationToken = verificationToken;
+            user.EmailVerificationTokenExpiry = DateTime.UtcNow.AddHours(24);
+            await _context.SaveChangesAsync();
+
+            SmtpProvider.SendVerificationEmail(_configuration, user.Email, user.Username, verificationToken);
+
+            return Ok("Verification email sent");
         }
 
         [HttpPost("[action]")]

@@ -6,6 +6,9 @@ namespace Fichte.Dtos
         public string? Username { get; set; }
         public string? Email { get; set; }
         public bool IsOnline { get; set; }
+        
+        public bool IsEmailVerified { get; set; }
+
         public DateTime? LastSeen { get; set; }
         public DateTime CreatedAt { get; set; }
     }

@@ -22,6 +22,7 @@ namespace Fichte.Controllers
                 Username = user.Username,
                 Email = user.Email,
                 IsOnline = user.IsOnline,
+                IsEmailVerified = user.IsEmailVerified,
                 LastSeen = user.LastSeen,
                 CreatedAt = user.CreatedAt
             });
@@ -41,6 +42,7 @@ namespace Fichte.Controllers
                 Username = user.Username,
                 Email = user.Email,
                 IsOnline = user.IsOnline,
+                IsEmailVerified = user.IsEmailVerified,
                 LastSeen = user.LastSeen,
                 CreatedAt = user.CreatedAt
             });
@@ -58,6 +60,7 @@ namespace Fichte.Controllers
                     Username = u.Username,
                     Email = u.Email,
                     IsOnline = u.IsOnline,
+                    IsEmailVerified = u.IsEmailVerified,
                     LastSeen = u.LastSeen,
                     CreatedAt = u.CreatedAt
                 })
@@ -77,6 +80,7 @@ namespace Fichte.Controllers
                     Username = u.Username,
                     Email = u.Email,
                     IsOnline = u.IsOnline,
+                    IsEmailVerified = u.IsEmailVerified,
                     LastSeen = u.LastSeen,
                     CreatedAt = u.CreatedAt
                 })

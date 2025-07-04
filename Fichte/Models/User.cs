@@ -14,6 +14,8 @@ namespace Fichte.Models
         
         public string? Email { get; set; }
         public bool IsEmailVerified { get; set; } = false;
+        public string? EmailVerificationToken { get; set; }
+        public DateTime? EmailVerificationTokenExpiry { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? LastSeen { get; set; }
         public bool IsOnline { get; set; } = false;

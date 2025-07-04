@@ -13,6 +13,8 @@ class FichteClient {
         this.initializeElements();
         this.setupEventListeners();
         
+        this.checkEmailVerification();
+        
         if (this.token) {
             this.loadUserData();
         } else {
@@ -168,12 +170,11 @@ class FichteClient {
         const password = document.getElementById('register-password').value;
         const email = document.getElementById('register-email').value;
         
-        const endpoint = email ? '/auth/registerwithemail' : '/auth/register';
         const body = email ? 
             JSON.stringify({ username, password, email }) :
             JSON.stringify({ username, password });
         
-        const response = await this.apiCall(endpoint, {
+        const response = await this.apiCall('/auth/register', {
             method: 'POST',
             body
         });
@@ -204,14 +205,14 @@ class FichteClient {
     
     saveContactsToStorage() {
         const contactsArray = Array.from(this.contacts.values());
-        localStorage.setItem(`fichteContacts_${this.currentUsername}`, JSON.stringify(contactsArray.map(c => c.id)));
+        localStorage.setItem(`fichteContacts_${this.currentUser.username}`, JSON.stringify(contactsArray.map(c => c.id)));
     }
 
     async loadContacts() {
         const response = await this.apiCall('/users');
         if (response && response.ok) {
             const users = await response.json();
-            const savedContactIds = JSON.parse(localStorage.getItem(`fichteContacts_${this.currentUsername}`)) ?? [];
+            const savedContactIds = JSON.parse(localStorage.getItem(`fichteContacts_${this.currentUser.username}`)) ?? [];
             
             this.contacts.clear();
             users.forEach(user => {
@@ -597,6 +598,44 @@ class FichteClient {
         } else {
             alert('Failed to join group. Please check the invite code.');
         }
+    }
+    
+    checkEmailVerification() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const verifyToken = urlParams.get('verify');
+        
+        if (verifyToken) {
+            this.verifyEmail(verifyToken);
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }
+    
+    async verifyEmail(token) {
+        const response = await this.apiCall(`/auth/verifyemail?token=${token}`);
+        
+        if (response && response.ok) {
+            this.showVerificationMessage('Email verified successfully!', 'success');
+        } else {
+            const errorText = await response.text();
+            this.showVerificationMessage(errorText || 'Email verification failed', 'error');
+        }
+    }
+    
+    showVerificationMessage(message, type) {
+        let messageDiv = document.getElementById('verification-message');
+        if (!messageDiv) {
+            messageDiv = document.createElement('div');
+            messageDiv.id = 'verification-message';
+            document.body.insertBefore(messageDiv, document.body.firstChild);
+        }
+        
+        messageDiv.textContent = message;
+        messageDiv.className = `verification-message ${type}`;
+        messageDiv.style.display = 'block';
+        
+        setTimeout(() => {
+            messageDiv.style.display = 'none';
+        }, 5000);
     }
     
     logout() {
