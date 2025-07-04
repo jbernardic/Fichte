@@ -35,7 +35,7 @@ namespace Fichte.Controllers
 
             var userId = principal.FindFirstValue(ClaimTypes.Name);
             var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
-            await WebSocketProvider.ReceiveMessages(webSocket, userId!);
+            await WebSocketProvider.ReceiveMessages(_context, webSocket, userId!);
         }
     }
 }

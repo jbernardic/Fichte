@@ -202,13 +202,20 @@ class FichteClient {
         }
     }
     
+    saveContactsToStorage() {
+        const contactsArray = Array.from(this.contacts.values());
+        localStorage.setItem(`fichteContacts_${this.currentUsername}`, JSON.stringify(contactsArray.map(c => c.id)));
+    }
+
     async loadContacts() {
-        const response = await this.apiCall('/users/online');
+        const response = await this.apiCall('/users');
         if (response && response.ok) {
             const users = await response.json();
+            const savedContactIds = JSON.parse(localStorage.getItem(`fichteContacts_${this.currentUsername}`)) ?? [];
+            
             this.contacts.clear();
             users.forEach(user => {
-                if (user.id !== this.currentUser.id) {
+                if (user.id !== this.currentUser.id && savedContactIds.includes(user.id)) {
                     this.contacts.set(user.id, user);
                 }
             });
@@ -394,7 +401,13 @@ class FichteClient {
         };
     }
     
-    handleWebSocketMessage(message) {
+    handleWebSocketMessage(data) {
+        if (data.type === 'userStatusUpdate') {
+            this.handleUserStatusUpdate(data.userId, data.isOnline);
+            return;
+        }
+        
+        const message = data;
         if (this.currentChat) {
             const isRelevant = 
                 (this.currentChat.type === 'direct' && 
@@ -409,6 +422,23 @@ class FichteClient {
         }
     }
     
+    handleUserStatusUpdate(userId, isOnline) {
+        if (this.contacts.has(userId)) {
+            const contact = this.contacts.get(userId);
+            contact.isOnline = isOnline;
+            this.contacts.set(userId, contact);
+        }
+        
+        if (isOnline) {
+            this.onlineUsers.add(userId);
+        } else {
+            this.onlineUsers.delete(userId);
+        }
+        
+        this.renderContacts();
+        this.renderOnlineUsers();
+    }
+    
     showAddContact() {
         const name = prompt('Enter username to add as contact:');
         if (name) {
@@ -421,6 +451,7 @@ class FichteClient {
         if (response && response.ok) {
             const user = await response.json();
             this.contacts.set(user.id, user);
+            this.saveContactsToStorage();
             this.renderContacts();
         }
     }

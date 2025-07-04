@@ -28,10 +28,10 @@ namespace Fichte.Controllers
         }
 
         [Authorize(Roles = "User")]
-        [HttpGet("{id}")]
-        public async Task<ActionResult<UserDto>> GetUser(int id)
+        [HttpGet("{username}")]
+        public async Task<ActionResult<UserDto>> GetUser(string username)
         {
-            var user = await _context.Users.FindAsync(id);
+            var user = await _context.Users.Where(user => user.Username == username).FirstOrDefaultAsync();
             if (user == null)
                 return NotFound();
 
@@ -64,6 +64,25 @@ namespace Fichte.Controllers
                 .ToListAsync();
 
             return Ok(onlineUsers);
+        }
+
+        [Authorize(Roles = "User")]
+        [HttpGet]
+        public async Task<ActionResult<List<UserDto>>> GetUsers()
+        {
+            var users = await _context.Users
+                .Select(u => new UserDto
+                {
+                    Id = u.IDUser,
+                    Username = u.Username,
+                    Email = u.Email,
+                    IsOnline = u.IsOnline,
+                    LastSeen = u.LastSeen,
+                    CreatedAt = u.CreatedAt
+                })
+                .ToListAsync();
+
+            return Ok(users);
         }
     }
 }
